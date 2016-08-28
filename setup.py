@@ -2,7 +2,7 @@ from setuptools import setup, find_packages
 
 setup(
     name='wsgissi',
-    version='0.5',
+    version='0.6',
     url='https://github.com/baverman/wsgissi/',
     license='MIT',
     author='Anton Bobrov',
@@ -10,6 +10,7 @@ setup(
     description='WSGI middleware to process nginx compatible ssi',
     long_description=open('README.rst').read(),
     py_modules=['wsgissi'],
+    install_requires=['WebOb>=1.4'],
     include_package_data=True,
     zip_safe=False,
     platforms='any',
