@@ -124,7 +124,7 @@ def wsgissi(app):
         body = ''.join(app(env, sr_collector))
         chunks = get_chunks(body)
         content, virtual = process(chunks)
-        vcontent = fetch_virtual(app, virtual)
+        vcontent = fetch_virtual(inner, virtual)
         result = ''.join(join_content(content, vcontent))
 
         status, headers, exc_info = sr_data[0]
