@@ -2,7 +2,7 @@ from setuptools import setup, find_packages
 
 setup(
     name='wsgissi',
-    version='0.6',
+    version='0.7',
     url='https://github.com/baverman/wsgissi/',
     license='MIT',
     author='Anton Bobrov',

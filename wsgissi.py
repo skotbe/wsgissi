@@ -1,7 +1,8 @@
 import re
+import time
 import webob
 
-cmd_arg_re = re.compile(r'(\w+)="(.+?)"')
+cmd_arg_re = re.compile(r'(\w+)="(.*?)"')
 var_re = re.compile(r'(^|[^\\])\$[{]?([_\w]+)[}]?')  # matches $var or ${var}
 
 
@@ -97,12 +98,27 @@ def process(chunks):
     return content, virtual
 
 
-def fetch_virtual(app, links):
+def fetch_virtual(env, app, links, log):
     result = []
-    sr = lambda env, sr, ei=None: None
+    environ = {k: v for k, v in env.items() if k.startswith('HTTP_') or k.startswith('SERVER_')}
+
+    def start_response(status, headers, exc_info=None):
+        last_status[0] = status
+
     for l in links:
-        req = webob.Request.blank(l)
-        result.append(''.join(app(req.environ, sr)))
+        if log:
+            print 'SSI include', l,
+        req = webob.Request.blank(l, environ=environ)
+
+        last_status = [None]
+        st = time.time()
+        resp = ''.join(app(req.environ, start_response))
+        duration = time.time() - st
+
+        if log:
+            print last_status[0], round(duration * 1000, 3)
+
+        result.append(resp)
 
     return result
 
@@ -115,7 +131,7 @@ def join_content(content, virtual):
             yield c
 
 
-def wsgissi(app):
+def wsgissi(app, log=True):
     def inner(env, sr):
         sr_data = []
         def sr_collector(status, headers, exc_info=None):
@@ -124,7 +140,7 @@ def wsgissi(app):
         body = ''.join(app(env, sr_collector))
         chunks = get_chunks(body)
         content, virtual = process(chunks)
-        vcontent = fetch_virtual(inner, virtual)
+        vcontent = fetch_virtual(env, inner, virtual, log=log)
         result = ''.join(join_content(content, vcontent))
 
         status, headers, exc_info = sr_data[0]
