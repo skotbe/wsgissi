@@ -156,6 +156,6 @@ def wsgissi(app, log=True):
         headers.append(('Content-Length', str(len(result))))
 
         sr(status, headers, exc_info)
-        return result
+        return [result]
 
     return inner
