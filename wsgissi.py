@@ -22,7 +22,7 @@ def get_chunks(body):
     end = 0
     start = 0
     while True:
-        start = body.find('<!--#', end)
+        start = body.find(b'<!--#', end)
         if start < 0:
             yield '__content__', body[end:]
             break
@@ -30,10 +30,10 @@ def get_chunks(body):
             yield '__content__', body[end:start]
         start += 5
 
-        end = body.find('-->', start)
+        end = body.find(b'-->', start)
         if end < 0:
             break
-        command = body[start:end].strip()
+        command = body[start:end].strip().decode('UTF-8', 'ignore')
         end += 3
         yield parse_command(command)
 
@@ -115,7 +115,7 @@ def fetch_virtual(env, app, links, log):
 
         last_status = [None]
         st = time.time()
-        resp = ''.join(app(req.environ, start_response))
+        resp = b''.join(app(req.environ, start_response))
         duration = time.time() - st
 
         if log:
@@ -140,11 +140,11 @@ def wsgissi(app, log=True):
         def sr_collector(status, headers, exc_info=None):
             sr_data.append((status, headers, exc_info))
 
-        body = ''.join(app(env, sr_collector))
+        body = b''.join(app(env, sr_collector))
         chunks = get_chunks(body)
         content, virtual = process(chunks)
         vcontent = fetch_virtual(env, inner, virtual, log=log)
-        result = ''.join(join_content(content, vcontent))
+        result = b''.join(join_content(content, vcontent))
 
         status, headers, exc_info = sr_data[0]
         headers = [(h, v) for h, v in headers if h.lower() != 'content-length']
