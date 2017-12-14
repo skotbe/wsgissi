@@ -1,9 +1,12 @@
+import logging
 import re
 import time
 import webob
 
 cmd_arg_re = re.compile(r'(\w+)="(.*?)"')
 var_re = re.compile(r'(^|[^\\])\$[{]?([_\w]+)[}]?')  # matches $var or ${var}
+
+logger = logging.getLogger(__name__)
 
 
 def parse_command(command):
@@ -107,7 +110,7 @@ def fetch_virtual(env, app, links, log):
 
     for l in links:
         if log:
-            print 'SSI include', l,
+            logger.info('SSI include %r', l)
         req = webob.Request.blank(l, environ=environ)
 
         last_status = [None]
@@ -116,7 +119,7 @@ def fetch_virtual(env, app, links, log):
         duration = time.time() - st
 
         if log:
-            print last_status[0], round(duration * 1000, 3)
+            logger.info('%r %r', last_status[0], round(duration * 1000, 3))
 
         result.append(resp)
 
