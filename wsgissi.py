@@ -137,8 +137,10 @@ def join_content(content, virtual):
 def wsgissi(app, log=True):
     def inner(env, sr):
         sr_data = []
+
         def sr_collector(status, headers, exc_info=None):
             sr_data.append((status, headers, exc_info))
+            return lambda s: None
 
         body = b''.join(app(env, sr_collector))
         chunks = get_chunks(body)
