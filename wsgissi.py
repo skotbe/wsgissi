@@ -3,6 +3,7 @@ import re
 import time
 import webob
 
+VIRTUAL_CHUNK = object()
 cmd_arg_re = re.compile(r'(\w+)="(.*?)"')
 var_re = re.compile(r'(^|[^\\])\$[{]?([_\w]+)[}]?')  # matches $var or ${var}
 
@@ -68,7 +69,6 @@ def process(chunks):
     ctx = {}
     content = []
     virtual = []
-    vcnt = 0
     ifcond = True
     for command, params in chunks:
         if command == 'if':
@@ -90,9 +90,8 @@ def process(chunks):
         if command == '__content__':
             content.append(params)
         elif command == 'include':
-            content.append(vcnt)
+            content.append(VIRTUAL_CHUNK)
             virtual.append(expand_vars(ctx, params['virtual']))
-            vcnt += 1
         elif command == 'set':
             ctx[params['var']] = expand_vars(ctx, params['value'])
         elif command == 'echo':
@@ -127,9 +126,10 @@ def fetch_virtual(env, app, links, log):
 
 
 def join_content(content, virtual):
+    virtual = iter(virtual)
     for c in content:
-        if type(c) == int:
-            yield virtual[c]
+        if c is VIRTUAL_CHUNK:
+            yield next(virtual)
         else:
             yield c
 
@@ -143,7 +143,10 @@ def wsgissi(app, log=True):
         body = b''.join(app(env, sr_collector))
         chunks = get_chunks(body)
         content, virtual = process(chunks)
-        vcontent = fetch_virtual(env, inner, virtual, log=log)
+        if virtual:
+            vcontent = fetch_virtual(env, inner, virtual, log=log)
+        else:
+            vcontent = []
         result = b''.join(join_content(content, vcontent))
 
         status, headers, exc_info = sr_data[0]
