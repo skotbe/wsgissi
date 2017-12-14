@@ -2,7 +2,7 @@ from setuptools import setup
 import io
 
 setup(
-    name='wsgissi',
+    name='wsgissi-skot',
     version='0.7',
     url='https://github.com/baverman/wsgissi/',
     license='MIT',
