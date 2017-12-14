@@ -1,4 +1,5 @@
-from setuptools import setup, find_packages
+from setuptools import setup
+import io
 
 setup(
     name='wsgissi',
@@ -8,7 +9,7 @@ setup(
     author='Anton Bobrov',
     author_email='baverman@gmail.com',
     description='WSGI middleware to process nginx compatible ssi',
-    long_description=open('README.rst').read(),
+    long_description=io.open('README.rst', encoding="utf-8").read(),
     py_modules=['wsgissi'],
     install_requires=['WebOb>=1.4'],
     include_package_data=True,
