@@ -1,4 +1,6 @@
 from wsgissi import parse_command, process, expand_vars, calc_if
+from wsgissi import VIRTUAL_CHUNK
+from wsgissi import wsgissi
 
 
 def cmd(command, **kwargs):
@@ -43,7 +45,7 @@ def test_virtual():
     content, virtual = process((cmd('set', var='boo', value='baz'),
                                 cmd('include', virtual='/foo?bar=$boo')))
 
-    assert content == [0]
+    assert content == [VIRTUAL_CHUNK]
     assert virtual == ['/foo?bar=baz']
 
 
