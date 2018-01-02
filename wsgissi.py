@@ -134,7 +134,32 @@ def join_content(content, virtual):
             yield c
 
 
-def wsgissi(app, log=True):
+def wsgissi(upstream, downstream=None, log=True, _norecurse=False):
+    """
+    Wrap a WSGI application in SSI middleware.
+
+    This emulates Nginx SSI directives, including:
+
+    - ``<!--#if ... ><!--# elif ... --><!--# else--><!--# endif -->``
+    - ``<!--#set ... >``
+    - ``<!--#echo ... >``
+    - ``<!--#include ... >``
+
+    :param upstream: WSGI application from which content is read.
+    :param downstream: WSGI application which is called to fulfill virtual
+                       includes. This may be empty, in which case ``upstream``
+                       will be used. Some frameworks (notably fresco) require
+                       ``virtual_app`` to be set to the fresco application
+                       object in order to set up a new request context for
+                       the include requests, ie
+                       ``app.add_middleware(wsgissi, app)``
+    """
+    if downstream is None:
+        downstream = upstream
+
+    if not _norecurse:
+        downstream = wsgissi(downstream, downstream, log=log, _norecurse=True)
+
     def inner(env, sr):
         sr_data = []
 
@@ -142,11 +167,11 @@ def wsgissi(app, log=True):
             sr_data.append((status, headers, exc_info))
             return lambda s: None
 
-        body = b''.join(app(env, sr_collector))
+        body = b''.join(upstream(env, sr_collector))
         chunks = get_chunks(body)
         content, virtual = process(chunks)
         if virtual:
-            vcontent = fetch_virtual(env, inner, virtual, log=log)
+            vcontent = fetch_virtual(env, downstream, virtual, log=log)
         else:
             vcontent = []
         result = b''.join(join_content(content, vcontent))

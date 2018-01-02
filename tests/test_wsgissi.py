@@ -96,3 +96,24 @@ def test_eq_expr():
     assert not calc_if({}, '$foo = foo')
     assert calc_if({'foo': 'foo'}, '$foo = foo')
     assert not calc_if({'foo': 'foo'}, '$foo = boo')
+
+
+def test_it_includes_from_virtual():
+
+    def app1(env, sr):
+        sr("200 OK", [('Content-Type', 'text/html')])
+        return [b'foo <!--# include virtual="bar.html"-->']
+
+    def app2(env, sr):
+        sr("200 OK", [('Content-Type', 'text/html')])
+        if env['PATH_INFO'] == 'bar.html':
+            return [b'bar <!--# include virtual="baz.html"-->']
+        elif env['PATH_INFO'] == 'baz.html':
+            return [b'baz']
+        else:
+            assert False, 'Unexpected PATH_INFO %r' % (env['PATH_INFO'])
+
+    app = wsgissi(app1, app2)
+    sr = lambda status, headers, exc_info: None
+    result = b''.join(app({}, sr))
+    assert result == b'foo bar baz'
