@@ -1,11 +1,13 @@
 import logging
+import io
 import re
 import time
-import webob
 try:
     from urllib.parse import urljoin
+    from urllib.parse import urlparse
 except ImportError:
     from urlparse import urljoin
+    from urlparse import urlparse
 
 VIRTUAL_CHUNK = object()
 cmd_arg_re = re.compile(r'(\w+)="(.*?)"')
@@ -106,21 +108,32 @@ def process(chunks, base):
 
 def fetch_virtual(env, app, links, log):
     result = []
-    environ = {k: v for k, v in env.items() if k.startswith('HTTP_') or k.startswith('SERVER_')}
+
+    environ = {k: v
+               for k, v in env.items()
+               if (k[:5] == 'HTTP_' or
+                   k[:7] == 'SERVER_' or
+                   k[:5] == 'wsgi.' or
+                   k == 'SCRIPT_NAME')}
+    environ['REQUEST_METHOD'] = 'GET'
+    environ['wsgi.input'] = io.BytesIO()
 
     def start_response(status, headers, exc_info=None):
         last_status[0] = status
 
-    for l in links:
-        if not isinstance(l, str) and str is bytes:
-            l = l.encode('latin1')
+    for url in links:
+        if not isinstance(url, str) and str is bytes:
+            url = url.encode('latin1')
         if log:
-            logger.info('SSI include %r', l)
-        req = webob.Request.blank(l, environ=environ)
-
+            logger.info('SSI include %r', url)
+        parsed = urlparse(url)
+        environ = dict(environ,
+                       PATH_INFO=parsed.path,
+                       QUERY_STRING=parsed.query
+                       )
         last_status = [None]
         st = time.time()
-        upstream_content = app(req.environ, start_response)
+        upstream_content = app(environ, start_response)
         try:
             body = b''.join(upstream_content)
         finally:

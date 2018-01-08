@@ -11,7 +11,7 @@ setup(
     description='WSGI middleware to process nginx compatible ssi',
     long_description=io.open('README.rst', encoding="utf-8").read(),
     py_modules=['wsgissi'],
-    install_requires=['WebOb>=1.4'],
+    install_requires=[],
     include_package_data=True,
     zip_safe=False,
     platforms='any',
