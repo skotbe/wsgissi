@@ -1,3 +1,5 @@
+from wsgiref.util import setup_testing_defaults
+
 from wsgissi import parse_command, process, expand_vars, calc_if
 from wsgissi import VIRTUAL_CHUNK
 from wsgissi import wsgissi
@@ -8,7 +10,7 @@ def cmd(command, **kwargs):
 
 
 def pp(*commands):
-    return ''.join(process(commands)[0])
+    return ''.join(process(commands, '/')[0])
 
 
 def test_command_parse():
@@ -43,7 +45,8 @@ def test_var_expand():
 
 def test_virtual():
     content, virtual = process((cmd('set', var='boo', value='baz'),
-                                cmd('include', virtual='/foo?bar=$boo')))
+                                cmd('include', virtual='/foo?bar=$boo')),
+                               '/')
 
     assert content == [VIRTUAL_CHUNK]
     assert virtual == ['/foo?bar=baz']
@@ -106,14 +109,16 @@ def test_it_includes_from_virtual():
 
     def app2(env, sr):
         sr("200 OK", [('Content-Type', 'text/html')])
-        if env['PATH_INFO'] == 'bar.html':
+        if env['PATH_INFO'] == '/bar.html':
             return [b'bar <!--# include virtual="baz.html"-->']
-        elif env['PATH_INFO'] == 'baz.html':
+        elif env['PATH_INFO'] == '/baz.html':
             return [b'baz']
         else:
             assert False, 'Unexpected PATH_INFO %r' % (env['PATH_INFO'])
 
     app = wsgissi(app1, app2)
     sr = lambda status, headers, exc_info: None
-    result = b''.join(app({}, sr))
+    env = {}
+    setup_testing_defaults(env)
+    result = b''.join(app(env, sr))
     assert result == b'foo bar baz'

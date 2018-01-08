@@ -2,6 +2,10 @@ import logging
 import re
 import time
 import webob
+try:
+    from urllib.parse import urljoin
+except ImportError:
+    from urlparse import urljoin
 
 VIRTUAL_CHUNK = object()
 cmd_arg_re = re.compile(r'(\w+)="(.*?)"')
@@ -65,7 +69,7 @@ def calc_if(ctx, expr):
         return var != value
 
 
-def process(chunks):
+def process(chunks, base):
     ctx = {}
     content = []
     virtual = []
@@ -91,7 +95,7 @@ def process(chunks):
             content.append(params)
         elif command == 'include':
             content.append(VIRTUAL_CHUNK)
-            virtual.append(expand_vars(ctx, params['virtual']))
+            virtual.append(urljoin(base, expand_vars(ctx, params['virtual'])))
         elif command == 'set':
             ctx[params['var']] = expand_vars(ctx, params['value'])
         elif command == 'echo':
@@ -108,6 +112,8 @@ def fetch_virtual(env, app, links, log):
         last_status[0] = status
 
     for l in links:
+        if not isinstance(l, str) and str is bytes:
+            l = l.encode('latin1')
         if log:
             logger.info('SSI include %r', l)
         req = webob.Request.blank(l, environ=environ)
@@ -169,7 +175,15 @@ def wsgissi(upstream, downstream=None, log=True, _norecurse=False):
 
         body = b''.join(upstream(env, sr_collector))
         chunks = get_chunks(body)
-        content, virtual = process(chunks)
+        path_info = env['PATH_INFO']
+        if path_info == '':
+            path = '/'
+        else:
+            if isinstance(path_info, bytes):
+                path = path_info
+            else:
+                path = env['PATH_INFO'].encode('latin1').decode('utf8')
+        content, virtual = process(chunks, path)
         if virtual:
             vcontent = fetch_virtual(env, downstream, virtual, log=log)
         else:
