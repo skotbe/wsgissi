@@ -133,13 +133,18 @@ def fetch_virtual(env, app, links, log):
                        )
         last_status = [None]
         st = time.time()
-        upstream_content = app(environ, start_response)
         try:
-            body = b''.join(upstream_content)
-        finally:
-            close = getattr(upstream_content, 'close', None)
-            if close is not None:
-                close()
+            upstream_content = app(environ, start_response)
+            try:
+                body = b''.join(upstream_content)
+            finally:
+                close = getattr(upstream_content, 'close', None)
+                if close is not None:
+                    close()
+        except Exception:
+            logger.exception("Exception while processing SSI Include %r", url)
+            body = b''
+
         duration = time.time() - st
         if log:
             logger.info('%r %r', last_status[0], round(duration * 1000, 3))

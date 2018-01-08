@@ -124,6 +124,47 @@ def test_it_includes_from_virtual():
     assert result == b'foo bar baz'
 
 
+def test_it_handles_exceptions_in_includes():
+    import logging
+
+    class LogHandler(logging.Handler):
+
+        records = []
+
+        def handle(self, record):
+            self.records.append(record)
+            return super(LogHandler, self).handle(record)
+
+        def emit(self, record):
+            pass
+
+    exception = ValueError()
+
+    def app1(env, sr):
+        sr("200 OK", [('Content-Type', 'text/html')])
+        return [b'foo <!--# include virtual="bar.html"-->']
+
+    def app2(env, sr):
+        raise exception
+
+    handler = LogHandler()
+    logger = logging.getLogger('wsgissi')
+    logger.addHandler(handler)
+    try:
+        app = wsgissi(app1, app2)
+        sr = lambda status, headers, exc_info: None
+        env = {}
+        setup_testing_defaults(env)
+        result = b''.join(app(env, sr))
+        assert result == b'foo '
+        record = next(r for r in handler.records if r.levelname == 'ERROR')
+        assert '/bar.html' in record.message
+        assert record.exc_info[0] == exception.__class__
+        assert record.exc_info[1] == exception
+    finally:
+        logger.removeHandler(handler)
+
+
 def test_middleware_is_conformant():
     from wsgiref.validate import validator
 
