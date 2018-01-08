@@ -122,3 +122,51 @@ def test_it_includes_from_virtual():
     setup_testing_defaults(env)
     result = b''.join(app(env, sr))
     assert result == b'foo bar baz'
+
+
+def test_middleware_is_conformant():
+    from wsgiref.validate import validator
+
+    def start_response(status, headers, exc_info=None):
+        start_response.status = status
+        start_response.headers = headers
+        return lambda s: None
+
+    class CloseMe:
+        instances = []
+        closed = False
+
+        def __init__(self, iterable):
+            self.instances.append(self)
+            self.iterable = iter(iterable)
+
+        def __iter__(self):
+            return self
+
+        def __next__(self):
+            return next(self.iterable)
+
+        next = __next__
+
+        def close(self):
+            self.closed = True
+
+    def app1(env, sr):
+        sr("200 OK", [('Content-Type', 'text/html')])
+        return CloseMe([b'foo <!--# include virtual="bar.html"-->'])
+
+    def app2(env, sr):
+        sr("200 OK", [('Content-Type', 'text/html')])
+        return CloseMe([b'bar'])
+
+    environ = {'QUERY_STRING': ''}
+    setup_testing_defaults(environ)
+    app = validator(wsgissi(validator(app1), validator(app2)))
+    iterable = app(environ, start_response)
+    content = list(iterable)
+    iterable.close()
+    assert all(i.closed for i in CloseMe.instances)
+
+    assert content == [b'foo bar']
+    assert start_response.status == '200 OK'
+    assert start_response.headers == [('Content-Type', 'text/html'), ('Content-Length', '7')]

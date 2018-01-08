@@ -120,13 +120,18 @@ def fetch_virtual(env, app, links, log):
 
         last_status = [None]
         st = time.time()
-        resp = b''.join(app(req.environ, start_response))
+        upstream_content = app(req.environ, start_response)
+        try:
+            body = b''.join(upstream_content)
+        finally:
+            close = getattr(upstream_content, 'close', None)
+            if close is not None:
+                close()
         duration = time.time() - st
-
         if log:
             logger.info('%r %r', last_status[0], round(duration * 1000, 3))
 
-        result.append(resp)
+        result.append(body)
 
     return result
 
@@ -173,7 +178,13 @@ def wsgissi(upstream, downstream=None, log=True, _norecurse=False):
             sr_data.append((status, headers, exc_info))
             return lambda s: None
 
-        body = b''.join(upstream(env, sr_collector))
+        upstream_content = upstream(env, sr_collector)
+        try:
+            body = b''.join(upstream_content)
+        finally:
+            close = getattr(upstream_content, 'close', None)
+            if close is not None:
+                close()
         chunks = get_chunks(body)
         path_info = env['PATH_INFO']
         if path_info == '':
