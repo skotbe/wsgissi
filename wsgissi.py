@@ -109,14 +109,14 @@ def process(chunks, base):
 def fetch_virtual(env, app, links, log):
     result = []
 
-    environ = {k: v
-               for k, v in env.items()
-               if (k[:5] == 'HTTP_' or
-                   k[:7] == 'SERVER_' or
-                   k[:5] == 'wsgi.' or
-                   k == 'SCRIPT_NAME')}
-    environ['REQUEST_METHOD'] = 'GET'
-    environ['wsgi.input'] = io.BytesIO()
+    template_environ = {k: v
+                        for k, v in env.items()
+                        if (k[:5] == 'HTTP_' or
+                            k[:7] == 'SERVER_' or
+                            k[:5] == 'wsgi.' or
+                            k == 'SCRIPT_NAME')}
+    template_environ['REQUEST_METHOD'] = 'GET'
+    template_environ['wsgi.input'] = io.BytesIO()
 
     def start_response(status, headers, exc_info=None):
         last_status[0] = status
@@ -127,7 +127,7 @@ def fetch_virtual(env, app, links, log):
         if log:
             logger.info('SSI include %r', url)
         parsed = urlparse(url)
-        environ = dict(environ,
+        environ = dict(template_environ,
                        PATH_INFO=parsed.path,
                        QUERY_STRING=parsed.query
                        )
