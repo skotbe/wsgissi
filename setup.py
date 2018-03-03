@@ -3,7 +3,7 @@ import io
 
 setup(
     name='wsgissi-skot',
-    version='0.7',
+    version='0.8.dev0',
     url='https://github.com/skotbe/wsgissi/',
     license='MIT',
     author='Olly Cope',
